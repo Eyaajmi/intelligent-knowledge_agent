@@ -38,6 +38,8 @@ def cosine_similarity(vector_a, vector_b):
     )
 
 
+
+
 # ==========================================
 # 3. Chunking
 # ==========================================
@@ -216,25 +218,14 @@ Question:
 # ==========================================
 # 7. Document
 # ==========================================
+def load_document(path):
+    with open(path, "r", encoding="utf-8") as file:
+        return file.read()
 
-document = """
-Our company offers a 30-day refund policy for all eligible purchases.
 
-Customers who want to request a refund must contact the support team
-through the online support portal. The customer should provide the
-order number and proof of purchase.
-
-Refunds are normally processed within five business days after the
-request has been approved.
-
-Employees receive 25 days of annual leave every year. Annual leave
-requests must be submitted to the employee's manager.
-
-Payments can be made using a credit card, debit card, or bank transfer.
-
-The company's headquarters are located in Tunis.
-"""
-
+document = load_document(
+    "data/company_policy.txt"
+)
 
 # ==========================================
 # 8. Question
