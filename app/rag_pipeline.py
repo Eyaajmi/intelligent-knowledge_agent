@@ -3,7 +3,7 @@ import numpy as np
 import json
 import os
 
-from document_loader import load_pdf
+from app.document_loader import load_pdf
 
 
 # ==========================================
@@ -229,6 +229,10 @@ You are a helpful AI assistant.
 
 Answer the user's question using ONLY the provided context.
 
+The context contains the source and page number of each retrieved passage.
+
+If the answer is found in the context, answer clearly and mention the relevant page.
+
 If the answer cannot be found in the context,
 say that you do not have enough information.
 
@@ -275,111 +279,88 @@ Question:
 
 
 # ==========================================
-# 10. Programme principal
+# Programme principal
 # ==========================================
 
-pdf_path = "data/test_document.pdf"
-chunks = create_chunks_from_pdf(pdf_path)
+if __name__ == "__main__":
 
-print("Number of chunks:", len(chunks))
+    pdf_path = "data/test_document.pdf"
 
+    chunks = create_chunks_from_pdf(pdf_path)
 
+    print("Number of chunks:", len(chunks))
 
-# ==========================================
-# 11. Embeddings + index
-# ==========================================
+    index_path = "data/index.json"
 
-index_path = "data/index.json"
+    if os.path.exists(index_path):
 
-if os.path.exists(index_path):
+        print("Loading existing index...")
 
-    print("Loading existing index...")
+        index = load_index(index_path)
 
-    index = load_index(index_path)
+        print("Index loaded!")
 
-    print("Index loaded!")
+    else:
 
-else:
+        print("Creating index...")
 
-    print("Creating index...")
+        index = create_index(chunks)
 
-    index = create_index(chunks)
+        save_index(index, index_path)
 
-    save_index(index, index_path)
+        print("Index created and saved!")
 
-    print("Index created and saved!")
+    # Question
 
+    query = "Quelles sont les sanctions disciplinaires ?"
 
-# ==========================================
-# 12. Question
-# ==========================================
+    # Retrieval
 
-query = "Quelles sont les sanctions disciplinaires prévues par le règlement intérieur ?"
+    results = search(
+        query,
+        index,
+        top_k=3
+    )
 
+    # Affichage des résultats
 
-# ==========================================
-# 13. Retrieval
-# ==========================================
+    print("\n==============================")
+    print("SEARCH RESULTS")
+    print("==============================")
 
-results = search(
-    query,
-    index,
-    top_k=3
-)
+    for result in results:
 
+        print("\nScore:", result["score"])
+        print("Source:", result["source"])
+        print("Page:", result["page"])
+        print("Chunk:", result["chunk_id"])
+        print("Text:", result["text"])
 
-# ==========================================
-# 14. Afficher les résultats
-# ==========================================
+    # Context
 
-print("\n==============================")
-print("SEARCH RESULTS")
-print("==============================")
+    context = "\n\n".join(
+        f"Source: {result['source']}\n"
+        f"Page: {result['page']}\n"
+        f"Chunk: {result['chunk_id']}\n\n"
+        f"{result['text']}"
+        for result in results
+    )
 
+    print("\n==============================")
+    print("CONTEXT SENT TO LLM")
+    print("==============================")
 
-for result in results:
+    print(context)
 
-    print("\nScore:", result["score"])
+    # Answer
 
-    print("Source:", result["source"])
+    answer = generate_answer(
+        query,
+        context
+    )
 
-    print("Page:", result["page"])
+    print("\n==============================")
+    print("FINAL ANSWER")
+    print("==============================")
 
-    print("Chunk:", result["chunk_id"])
-
-    print("Text:", result["text"])
-
-
-
-
-# ==========================================
-# 15. Construire le contexte
-# ==========================================
-
-context = "\n\n".join(
-    f"Source: {result['source']}\n"
-    f"Page: {result['page']}\n"
-    f"Chunk: {result['chunk_id']}\n\n"
-    f"{result['text']}"
-    for result in results
-)
-
-print("\n==============================")
-print("CONTEXT SENT TO LLM")
-print("==============================")
-print(context)
-
-# ==========================================
-# 16. Générer la réponse
-# ==========================================
-
-answer = generate_answer(
-    query,
-    context
-)
-
-print("\n==============================")
-print("FINAL ANSWER")
-print("==============================")
-print(answer)
-
+    print(answer)
