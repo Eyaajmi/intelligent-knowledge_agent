@@ -1,5 +1,7 @@
 import requests
 import numpy as np
+import json
+import os
 
 from document_loader import load_pdf
 
@@ -161,10 +163,28 @@ def create_index(chunks):
         })
 
     return index
+# ==========================================
+# 6. Sauvegarder l'index
+# ==========================================
+
+def save_index(index, path):
+
+    with open(path, "w", encoding="utf-8") as file:
+        json.dump(index, file, ensure_ascii=False)
 
 
 # ==========================================
-# 6. Recherche
+# 7. Charger l'index
+# ==========================================
+
+def load_index(path):
+
+    with open(path, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+# ==========================================
+# 8. Recherche
 # ==========================================
 
 def search(query, index, top_k=2):
@@ -197,7 +217,7 @@ def search(query, index, top_k=2):
 
 
 # ==========================================
-# 7. Appel au LLM
+# 9. Appel au LLM
 # ==========================================
 
 def generate_answer(query, context):
@@ -255,36 +275,50 @@ Question:
 
 
 # ==========================================
-# 8. Programme principal
+# 10. Programme principal
 # ==========================================
 
 pdf_path = "data/test_document.pdf"
-
 chunks = create_chunks_from_pdf(pdf_path)
 
 print("Number of chunks:", len(chunks))
 
 
-# ==========================================
-# 9. Embeddings + index
-# ==========================================
-
-print("Creating index...")
-
-index = create_index(chunks)
-
-print("Index created!")
-
 
 # ==========================================
-# 10. Question
+# 11. Embeddings + index
+# ==========================================
+
+index_path = "data/index.json"
+
+if os.path.exists(index_path):
+
+    print("Loading existing index...")
+
+    index = load_index(index_path)
+
+    print("Index loaded!")
+
+else:
+
+    print("Creating index...")
+
+    index = create_index(chunks)
+
+    save_index(index, index_path)
+
+    print("Index created and saved!")
+
+
+# ==========================================
+# 12. Question
 # ==========================================
 
 query = "Quelles sont les sanctions disciplinaires prévues par le règlement intérieur ?"
 
 
 # ==========================================
-# 11. Retrieval
+# 13. Retrieval
 # ==========================================
 
 results = search(
@@ -295,7 +329,7 @@ results = search(
 
 
 # ==========================================
-# 12. Afficher les résultats
+# 14. Afficher les résultats
 # ==========================================
 
 print("\n==============================")
@@ -319,7 +353,7 @@ for result in results:
 
 
 # ==========================================
-# 13. Construire le contexte
+# 15. Construire le contexte
 # ==========================================
 
 context = "\n\n".join(
@@ -336,7 +370,7 @@ print("==============================")
 print(context)
 
 # ==========================================
-# 14. Générer la réponse
+# 16. Générer la réponse
 # ==========================================
 
 answer = generate_answer(
