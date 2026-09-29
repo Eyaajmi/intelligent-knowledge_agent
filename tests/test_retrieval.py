@@ -6,7 +6,7 @@ index = load_index("data/index.json")
 
 correct = 0
 mrr_scores = []
-
+evaluation_results = []
 
 print("\n==============================")
 print("RETRIEVAL EVALUATION")
@@ -51,6 +51,12 @@ for test_case in TEST_CASES:
             break
 
     mrr_scores.append(reciprocal_rank)
+    evaluation_results.append({
+    "question": question,
+    "expected_page": expected_page,
+    "retrieved_pages": retrieved_pages,
+    "reciprocal_rank": reciprocal_rank
+})
 
     # ------------------------------
     # Display results
@@ -59,6 +65,10 @@ for test_case in TEST_CASES:
     print("\nQuestion:", question)
     print("Expected page:", expected_page)
     print("Retrieved pages:", retrieved_pages)
+    print("Retrieved scores:", [
+    round(result["score"], 4)
+    for result in results
+])
 
     if is_correct:
         print("Result: PASS")
@@ -87,3 +97,19 @@ print("==============================")
 
 print("Recall@3:", recall_at_3)
 print("MRR@3:", mrr_at_3)
+print("\n==============================")
+print("DETAILED RETRIEVAL ANALYSIS")
+print("==============================")
+
+
+for result in evaluation_results:
+
+    print("\nQuestion:", result["question"])
+    print("Expected page:", result["expected_page"])
+    print("Retrieved pages:", result["retrieved_pages"])
+
+    if result["reciprocal_rank"] > 0:
+        rank = int(1 / result["reciprocal_rank"])
+        print("Expected page rank:", rank)
+    else:
+        print("Expected page rank: Not found")

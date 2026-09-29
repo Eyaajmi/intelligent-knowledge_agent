@@ -62,7 +62,7 @@ def create_index(documents):
 # 4. Rechercher les documents pertinents
 # ==========================================
 
-def search(query, index, top_k=3):
+def search(query, index, top_k=10):
 
     query_embedding = get_embedding(query)
 
@@ -121,7 +121,7 @@ query = "How can I get my money back?"
 results = search(
     query,
     index,
-    top_k=3
+    top_k=10
 )
 
 
