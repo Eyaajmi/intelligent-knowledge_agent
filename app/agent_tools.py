@@ -10,13 +10,16 @@ from app.reranker import rerank
 INDEX_PATH = "data/index.json"
 
 
-def search_documents(query, top_k=5):
-    """
-    Recherche les passages les plus pertinents
-    dans les documents disponibles.
-    """
-
+def search_documents(query, top_k=5, source=None):
     index = load_index(INDEX_PATH)
+
+    if source:
+        normalized_source = source.replace("\\", "/")
+
+        index = [
+            item for item in index
+            if item["source"].replace("\\", "/") == normalized_source
+        ]
 
     # Recherche sémantique
     semantic_results = search(

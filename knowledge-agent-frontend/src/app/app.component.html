@@ -1,0 +1,102 @@
+<div class="container">
+
+  <header>
+    <h1>Intelligent Knowledge Agent</h1>
+    <p>Posez une question sur vos documents.</p>
+  </header>
+
+  <main>
+    <section class="upload-section">
+
+  <h2>Ajouter un document</h2>
+
+  <input
+    type="file"
+    accept=".pdf"
+    (change)="onFileSelected($event)">
+
+  <button
+    (click)="uploadDocument()"
+    [disabled]="uploading || !selectedFile">
+
+    {{ uploading ? 'Indexation...' : 'Upload PDF' }}
+
+  </button>
+
+  @if (uploadMessage) {
+  <p class="upload-message">
+    {{ uploadMessage }}
+  </p>
+}
+
+</section>
+
+    <section class="question-section">
+
+      <h2>Ask a question</h2>
+      <label for="document">Document :</label>
+
+<select
+  id="document"
+  [(ngModel)]="selectedSource">
+
+  <option value="">
+    Tous les documents
+  </option>
+
+  @for (document of documents; track document) {
+    <option [value]="document">
+      {{ document.split('/').pop() }}
+    </option>
+  }
+
+</select>
+
+      <textarea
+        [(ngModel)]="question"
+        placeholder="Exemple : Quel est le sujet principal de ce document ?"
+        rows="4">
+      </textarea>
+
+      <button
+        (click)="askQuestion()"
+        [disabled]="loading || !question.trim()">
+
+        {{ loading ? 'Recherche...' : 'Ask' }}
+
+      </button>
+
+    </section>
+
+    @if (answer) {
+
+      <section class="answer-section">
+
+        <h2>Answer</h2>
+
+        <div class="answer">
+          {{ answer }}
+        </div>
+
+      </section>
+
+      <section class="sources-section">
+
+  <h2>Sources</h2>
+
+  @for (source of sources; track source.source + source.page) {
+
+    <div class="source">
+      <strong>Page {{ source.page }}</strong>
+      <span> — {{ source.source.split('/').pop() }}</span>
+    </div>
+
+  }
+
+</section>
+
+    }
+
+  </main>
+
+</div>

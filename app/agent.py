@@ -59,11 +59,11 @@ Contexte :
     return result["message"]["content"]
 
 
-def ask_agent(question):
-
+def ask_agent(question, source=None):
     results = search_documents(
         question,
-        top_k=5
+        top_k=5,
+        source=source
     )
 
     answer = generate_answer(
