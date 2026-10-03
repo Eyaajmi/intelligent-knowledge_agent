@@ -11,21 +11,45 @@ from app.document_loader import load_pdf
 # ==========================================
 
 def get_embedding(text):
+    response = requests.post(
+        "http://localhost:11434/api/embed",
+        json={
+            "model": "nomic-embed-text",
+            "input": text
+        }
+    )
 
-    url = "http://localhost:11434/api/embed"
-
-    data = {
-        "model": "nomic-embed-text",
-        "input": text
-    }
-
-    response = requests.post(url, json=data)
     response.raise_for_status()
 
-    result = response.json()
+    return response.json()["embeddings"][0]
 
-    return result["embeddings"][0]
+def get_embeddings(texts, batch_size=32):
 
+    all_embeddings = []
+
+    for i in range(0, len(texts), batch_size):
+
+        batch = texts[i:i + batch_size]
+
+        response = requests.post(
+            "http://localhost:11434/api/embed",
+            json={
+                "model": "nomic-embed-text",
+                "input": batch
+            }
+        )
+
+        response.raise_for_status()
+
+        embeddings = response.json()["embeddings"]
+
+        all_embeddings.extend(embeddings)
+
+        print(
+            f"Embeddings : {min(i + batch_size, len(texts))}/{len(texts)}"
+        )
+
+    return all_embeddings
 
 # ==========================================
 # 2. Similarité cosinus

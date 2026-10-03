@@ -1,10 +1,9 @@
 def reciprocal_rank_fusion(result_lists, k=60):
-  
-
+    
     scores = {}
     documents = {}
 
-    for results in result_lists:
+    for list_name, results in result_lists:
 
         for rank, result in enumerate(results, start=1):
 
@@ -14,9 +13,15 @@ def reciprocal_rank_fusion(result_lists, k=60):
 
             if chunk_id not in scores:
                 scores[chunk_id] = 0
-                documents[chunk_id] = result
+                documents[chunk_id] = result.copy()
 
             scores[chunk_id] += rrf_score
+
+            if list_name == "semantic":
+                documents[chunk_id]["semantic_score"] = result["score"]
+
+            elif list_name == "keyword":
+                documents[chunk_id]["keyword_score"] = result["score"]
 
     ranked_chunk_ids = sorted(
         scores,
