@@ -1,3 +1,5 @@
+
+
 from app.rag_pipeline import load_index, search
 from app.keyword_search import create_keyword_index, keyword_search
 from app.hybrid_search import (
@@ -42,9 +44,9 @@ hybrid_results = group_results_by_page(
 
 
 reranked_results = rerank(
+    query,
     hybrid_results
 )
-
 
 print("\n==============================")
 print("HYBRID RESULTS")
@@ -69,18 +71,18 @@ print("\n==============================")
 print("RERANKED RESULTS")
 print("==============================")
 
-for rank, result in enumerate(reranked_results[:10], start=1):
-
-  
- print(
-    rank,
-    "| Page:",
-    result["page"],
-    "| Semantic:",
-    round(result.get("semantic_score", 0), 4),
-    "| Keyword:",
-    round(result.get("keyword_score", 0), 4),
-    "| Rerank:",
-    round(result["rerank_score"], 4)
-)
-    
+for rank, result in enumerate(
+    reranked_results[:10],
+    start=1
+):
+    print(
+        rank,
+        "| Page:",
+        result["page"],
+        "| Semantic:",
+        round(result["direct_semantic_score"], 4),
+        "| Lexical:",
+        round(result["lexical_score"], 4),
+        "| Rerank:",
+        round(result["rerank_score"], 4)
+    )
