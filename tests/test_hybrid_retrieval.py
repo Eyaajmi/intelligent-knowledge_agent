@@ -4,21 +4,20 @@ from app.hybrid_search import (
     reciprocal_rank_fusion,
     group_results_by_page
 )
-
+from app.reranker import rerank
 from tests.retrieval_cases import TEST_CASES
-
 
 
 index = load_index("data/index.json")
 
-
 vectorizer, matrix = create_keyword_index(index)
 
 
-correct = 0
-mrr_scores = []
+recall_at_3 = 0
+recall_at_10 = 0
 
-evaluation_results = []
+mrr_at_3 = 0
+mrr_at_10 = 0
 
 
 for case in TEST_CASES:
@@ -26,14 +25,12 @@ for case in TEST_CASES:
     question = case["question"]
     expected_page = case["expected_page"]
 
-  
     semantic_results = search(
         question,
         index,
         top_k=10
     )
 
-  
     keyword_results = keyword_search(
         question,
         index,
@@ -42,85 +39,77 @@ for case in TEST_CASES:
         top_k=10
     )
 
-
     hybrid_results = reciprocal_rank_fusion(
         [
-            semantic_results,
-            keyword_results
+            ("semantic", semantic_results),
+            ("keyword", keyword_results)
         ]
     )
+
     hybrid_results = group_results_by_page(
-    hybrid_results
-)
+        hybrid_results
+    )
 
-
-    top_results = hybrid_results[:3]
+    reranked_results = rerank(
+        hybrid_results
+    )
 
     retrieved_pages = [
         result["page"]
-        for result in top_results
+        for result in reranked_results[:10]
     ]
 
+    # Recall@3
+    if expected_page in retrieved_pages[:3]:
+        recall_at_3 += 1
 
-    is_correct = expected_page in retrieved_pages
+    # Recall@10
+    if expected_page in retrieved_pages[:10]:
+        recall_at_10 += 1
 
-    if is_correct:
-        correct += 1
-
-   
-    reciprocal_rank = 0
-
-    for rank, page in enumerate(retrieved_pages, start=1):
-
+    # MRR@3
+    for rank, page in enumerate(
+        retrieved_pages[:3],
+        start=1
+    ):
         if page == expected_page:
-            reciprocal_rank = 1 / rank
+            mrr_at_3 += 1 / rank
             break
 
-    mrr_scores.append(reciprocal_rank)
-
-    evaluation_results.append({
-        "question": question,
-        "expected_page": expected_page,
-        "retrieved_pages": retrieved_pages,
-        "reciprocal_rank": reciprocal_rank
-    })
+    # MRR@10
+    for rank, page in enumerate(
+        retrieved_pages[:10],
+        start=1
+    ):
+        if page == expected_page:
+            mrr_at_10 += 1 / rank
+            break
 
     print("\nQuestion:", question)
     print("Expected page:", expected_page)
     print("Retrieved pages:", retrieved_pages)
 
-    if is_correct:
-        print("PASS")
+    if expected_page in retrieved_pages:
+        rank = retrieved_pages.index(expected_page) + 1
+        print("Relevant page rank:", rank)
     else:
-        print("FAIL")
-
-    if reciprocal_rank > 0:
-        print("Correct rank:", int(1 / reciprocal_rank))
-    else:
-        print("Correct rank: Not found")
+        print("Relevant page rank: NOT FOUND")
 
 
+number_of_cases = len(TEST_CASES)
 
-recall_at_3 = correct / len(TEST_CASES)
-mrr_at_3 = sum(mrr_scores) / len(mrr_scores)
+recall_at_3 /= number_of_cases
+recall_at_10 /= number_of_cases
+
+mrr_at_3 /= number_of_cases
+mrr_at_10 /= number_of_cases
 
 
 print("\n==============================")
-print("HYBRID RETRIEVAL EVALUATION")
+print("RERANKER EVALUATION")
 print("==============================")
 
 print("Recall@3:", recall_at_3)
+print("Recall@10:", recall_at_10)
 print("MRR@3:", mrr_at_3)
-
-
-print("\n==============================")
-print("DETAILED ANALYSIS")
-print("==============================")
-
-
-for result in evaluation_results:
-
-    print("\nQuestion:", result["question"])
-    print("Expected:", result["expected_page"])
-    print("Retrieved:", result["retrieved_pages"])
-    print("Reciprocal rank:", result["reciprocal_rank"])
+print("MRR@10:", mrr_at_10)
