@@ -15,7 +15,7 @@ def rerank(query, results):
 
         passage = result["text"]
 
-        # Similarité sémantique directe
+        # Similarité sémantique
         passage_embedding = get_embedding(passage)
 
         semantic_score = cosine_similarity(

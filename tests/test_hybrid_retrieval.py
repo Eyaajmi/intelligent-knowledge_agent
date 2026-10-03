@@ -1,96 +1,125 @@
-import requests
-import re
+from app.rag_pipeline import load_index, search
+from app.keyword_search import keyword_search
+from app.hybrid_search import reciprocal_rank_fusion
+from app.reranker import rerank
+from tests.retrieval_cases import TEST_CASES
+from app.keyword_search import keyword_search, create_keyword_index
 
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "qwen2.5:3b-instruct"
+def reciprocal_rank(expected_page, retrieved_pages, k):
+
+    for rank, page in enumerate(retrieved_pages[:k], start=1):
+
+        if page == expected_page:
+            return 1 / rank
+
+    return 0
 
 
-def score_relevance(question, passage):
-    """
-    Demande au LLM d'évaluer la pertinence
-    d'un passage par rapport à une question.
+def main():
 
-    Score :
-    0 = pas pertinent
-    1 = légèrement pertinent
-    2 = pertinent
-    3 = très pertinent
-    """
+    index = load_index("data/index.json")
+    vectorizer, matrix = create_keyword_index(index)
 
-    prompt = f"""
-Tu es un système de reranking pour un moteur de recherche documentaire.
+    recall_at_3 = 0
+    recall_at_10 = 0
 
-Évalue la pertinence du passage par rapport à la question.
+    mrr_at_3 = 0
+    mrr_at_10 = 0
 
-Question :
-{question}
+    total = len(TEST_CASES)
 
-Passage :
-{passage}
+    for case in TEST_CASES:
 
-Donne uniquement un score entier entre 0 et 3 :
+        question = case["question"]
+        expected_page = case["expected_page"]
 
-0 = le passage ne répond pas à la question
-1 = le passage est légèrement lié à la question
-2 = le passage est pertinent
-3 = le passage répond directement à la question
-
-Réponds uniquement avec le nombre.
-"""
-
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "stream": False
-        }
-    )
-
-    response.raise_for_status()
-
-    result = response.json()
-
-    answer = result["message"]["content"].strip()
-
-    match = re.search(r"[0-3]", answer)
-
-    if match is None:
-        return 0
-
-    return int(match.group())
-
-
-def rerank(question, results):
-    """
-    Re-classe les passages selon leur pertinence
-    évaluée par le LLM.
-    """
-
-    reranked_results = []
-
-    for result in results:
-
-        score = score_relevance(
+        # Recherche sémantique
+        semantic_results = search(
             question,
-            result["text"]
+            index,
+            top_k=10
         )
 
-        new_result = result.copy()
+        # Recherche lexicale
+        keyword_results = keyword_search(
+         question,
+           index,
+           vectorizer,
+           matrix,
+           top_k=10
+)
+        # Recherche hybride
+        hybrid_results = reciprocal_rank_fusion(
+            [
+                ("semantic", semantic_results),
+                ("keyword", keyword_results)
+            ]
+        )
 
-        new_result["rerank_score"] = score
+        # Reranking
+        reranked_results = rerank(
+            question,
+            hybrid_results
+        )
 
-        reranked_results.append(new_result)
+        retrieved_pages = [
+            result["page"]
+            for result in reranked_results[:10]
+        ]
 
-    reranked_results.sort(
-        key=lambda result: result["rerank_score"],
-        reverse=True
+        # Recall@3
+        if expected_page in retrieved_pages[:3]:
+            recall_at_3 += 1
+
+        # Recall@10
+        if expected_page in retrieved_pages[:10]:
+            recall_at_10 += 1
+
+        # MRR@3
+        mrr_at_3 += reciprocal_rank(
+            expected_page,
+            retrieved_pages,
+            3
+        )
+
+        # MRR@10
+        mrr_at_10 += reciprocal_rank(
+            expected_page,
+            retrieved_pages,
+            10
+        )
+
+        print()
+        print("Question:", question)
+        print("Page attendue:", expected_page)
+        print("Pages récupérées:", retrieved_pages)
+
+    print()
+    print("=" * 50)
+    print("RÉSULTATS RERANKER")
+    print("=" * 50)
+
+    print(
+        "Recall@3:",
+        round(recall_at_3 / total, 4)
     )
 
-    return reranked_results
+    print(
+        "Recall@10:",
+        round(recall_at_10 / total, 4)
+    )
+
+    print(
+        "MRR@3:",
+        round(mrr_at_3 / total, 4)
+    )
+
+    print(
+        "MRR@10:",
+        round(mrr_at_10 / total, 4)
+    )
+
+
+if __name__ == "__main__":
+    main()
