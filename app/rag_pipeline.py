@@ -229,7 +229,8 @@ def search(query, index, top_k=2):
             "score": score,
             "page": item["page"],
             "source": item["source"],
-            "chunk_id": item["chunk_id"]
+            "chunk_id": item["chunk_id"],
+            "embedding": item["embedding"]
         })
 
     results.sort(

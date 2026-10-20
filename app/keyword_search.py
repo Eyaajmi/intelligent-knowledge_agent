@@ -42,7 +42,8 @@ def keyword_search(query, index, vectorizer, matrix, top_k=3):
             "score": similarities[index_position],
             "page": item["page"],
             "source": item["source"],
-            "chunk_id": item["chunk_id"]
+            "chunk_id": item["chunk_id"],
+            "embedding": item["embedding"]
         })
 
     return results

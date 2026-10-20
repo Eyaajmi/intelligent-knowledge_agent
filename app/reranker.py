@@ -2,55 +2,41 @@ from app.rag_pipeline import get_embedding, cosine_similarity
 
 
 def rerank(query, results):
-    """
-    Re-classe les résultats en combinant
-    la similarité sémantique et la similarité lexicale.
-    """
+    """Rank results using semantic similarity and lexical overlap."""
 
     query_embedding = get_embedding(query)
-
+    query_words = set(query.lower().split())
     reranked_results = []
 
     for result in results:
-
         passage = result["text"]
 
-        # Similarité sémantique
-        passage_embedding = get_embedding(passage)
+        # Reuse the stored embedding when available.
+        passage_embedding = result.get("embedding")
+
+        # Fallback for results without a stored embedding.
+        if passage_embedding is None:
+            passage_embedding = get_embedding(passage)
 
         semantic_score = cosine_similarity(
             query_embedding,
             passage_embedding
         )
 
-        # Similarité lexicale simple
-        query_words = set(
-            query.lower().split()
-        )
+        passage_words = set(passage.lower().split())
+        common_words = query_words.intersection(passage_words)
 
-        passage_words = set(
-            passage.lower().split()
-        )
-
-        common_words = query_words.intersection(
-            passage_words
-        )
-
-        if len(query_words) > 0:
-            lexical_score = (
-                len(common_words) / len(query_words)
-            )
+        if query_words:
+            lexical_score = len(common_words) / len(query_words)
         else:
             lexical_score = 0
 
-        # Score final
         rerank_score = (
             0.7 * semantic_score
             + 0.3 * lexical_score
         )
 
         new_result = result.copy()
-
         new_result["direct_semantic_score"] = semantic_score
         new_result["lexical_score"] = lexical_score
         new_result["rerank_score"] = rerank_score
