@@ -1,11 +1,10 @@
+
 import json
 import os
+import tempfile
 
 from app.document_loader import load_pdf
-from app.rag_pipeline import (
-    get_embeddings,
-    split_text
-)
+from app.rag_pipeline import get_embeddings, split_text
 
 INDEX_PATH = "data/index.json"
 
@@ -19,51 +18,93 @@ def load_existing_index():
 
 
 def save_index(index):
-    with open(INDEX_PATH, "w", encoding="utf-8") as file:
-        json.dump(index, file, ensure_ascii=False, indent=2)
+    """Sauvegarde l'index via un fichier temporaire."""
+    directory = os.path.dirname(INDEX_PATH) or "."
+    os.makedirs(directory, exist_ok=True)
+
+    temp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=directory,
+            suffix=".tmp",
+            delete=False
+        ) as file:
+            temp_path = file.name
+            json.dump(index, file, ensure_ascii=False, indent=2)
+
+        os.replace(temp_path, INDEX_PATH)
+
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+def normalize_source(path):
+    """Retourne un chemin comparable sous Windows."""
+    return os.path.normcase(os.path.abspath(path))
 
 
 def index_document(path):
     pages = load_pdf(path)
-    index = load_existing_index()
 
     chunks_to_index = []
 
     for page in pages:
-
-        chunks = split_text(page["text"])
-
-        for chunk in chunks:
-
+        for chunk in split_text(page["text"]):
             chunks_to_index.append({
                 "text": chunk,
                 "page": page["page"],
-                "source": path
+                "source": os.path.normpath(path).replace("\\", "/")
             })
 
-    texts = [
-        chunk["text"]
-        for chunk in chunks_to_index
+    if not chunks_to_index:
+        raise ValueError(
+            f"Aucun texte exploitable trouvé dans le document : {path}"
+        )
+
+    embeddings = get_embeddings(
+        [chunk["text"] for chunk in chunks_to_index]
+    )
+
+    if len(embeddings) != len(chunks_to_index):
+        raise RuntimeError(
+            "Le nombre d'embeddings ne correspond pas au nombre de chunks."
+        )
+
+    index = load_existing_index()
+    target_source = normalize_source(path)
+
+    # Retirer toutes les anciennes versions de ce document,
+    # même si le chemin utilise des slashs différents.
+    index = [
+        chunk for chunk in index
+        if normalize_source(chunk["source"]) != target_source
     ]
 
-    embeddings = get_embeddings(texts)
-
-    start_id = len(index)
+    # Garder les anciens identifiants et attribuer des IDs uniques
+    # aux nouveaux chunks.
+    existing_ids = [
+        chunk["chunk_id"]
+        for chunk in index
+        if isinstance(chunk.get("chunk_id"), int)
+    ]
+    next_id = max(existing_ids, default=-1) + 1
 
     new_chunks = []
 
     for i, chunk in enumerate(chunks_to_index):
-
         new_chunks.append({
             "text": chunk["text"],
             "page": chunk["page"],
             "source": chunk["source"],
-            "chunk_id": start_id + i,
+            "chunk_id": next_id + i,
             "embedding": embeddings[i]
         })
 
-    index.extend(new_chunks)
-
-    save_index(index)
+    updated_index = index + new_chunks
+    save_index(updated_index)
 
     return len(new_chunks)

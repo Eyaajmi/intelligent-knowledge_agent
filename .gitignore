@@ -18,3 +18,5 @@ data/*.pdf
 knowledge-agent-frontend/node_modules/
 knowledge-agent-frontend/.angular/
 knowledge-agent-frontend/dist/
+
+data/index.backup.json
