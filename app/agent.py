@@ -71,13 +71,24 @@ def ask_agent(question, source=None):
         results
     )
 
-    return {
-        "answer": answer,
-        "sources": [
-            {
+    # Garder une seule référence par document et par page.
+    unique_sources = []
+    seen_sources = set()
+
+    for result in results:
+        source_key = (
+            result["source"],
+            result["page"]
+        )
+
+        if source_key not in seen_sources:
+            seen_sources.add(source_key)
+            unique_sources.append({
                 "page": result["page"],
                 "source": result["source"]
-            }
-            for result in results
-        ]
+            })
+
+    return {
+        "answer": answer,
+        "sources": unique_sources
     }
