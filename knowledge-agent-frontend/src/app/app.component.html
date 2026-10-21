@@ -1,102 +1,121 @@
 <div class="container">
-
   <header>
     <h1>Intelligent Knowledge Agent</h1>
-    <p>Posez une question sur vos documents.</p>
+    <p>Posez vos questions sur vos documents PDF. Les réponses citent leurs sources.</p>
   </header>
 
   <main>
-    <section class="upload-section">
+    <section class="card">
+      <h2>Documents</h2>
 
-  <h2>Ajouter un document</h2>
+      @if (documentsError) {
+        <p class="message error" role="alert">{{ documentsError }}</p>
+      }
 
-  <input
-    type="file"
-    accept=".pdf"
-    (change)="onFileSelected($event)">
+      @if (documents.length === 0 && !documentsError) {
+        <p class="muted">Aucun document indexé. Ajoutez un PDF pour commencer.</p>
+      }
 
-  <button
-    (click)="uploadDocument()"
-    [disabled]="uploading || !selectedFile">
+      <ul class="documents">
+        @for (doc of documents; track doc.id) {
+          <li>
+            <span class="doc-name">{{ doc.name }}</span>
+            <span class="muted">{{ doc.pages }} pages </span>
+            <button class="link danger" type="button" (click)="deleteDocument(doc)" [attr.aria-label]="'Supprimer ' + doc.name">
+              Supprimer
+            </button>
+          </li>
+        }
+      </ul>
 
-    {{ uploading ? 'Indexation...' : 'Upload PDF' }}
+      <div class="upload">
+        <input #fileInput type="file" accept=".pdf,application/pdf" (change)="onFileSelected($event)" />
+        <button type="button" (click)="uploadDocument(fileInput)" [disabled]="uploading || !selectedFile">
+          {{ uploading ? 'Indexation…' : 'Ajouter le PDF' }}
+        </button>
+      </div>
 
-  </button>
+      @if (uploadMessage) {
+        <p class="message" [class.error]="uploadFailed" [attr.role]="uploadFailed ? 'alert' : 'status'">
+          {{ uploadMessage }}
+        </p>
+      }
+    </section>
 
-  @if (uploadMessage) {
-  <p class="upload-message">
-    {{ uploadMessage }}
-  </p>
-}
+    <section class="card chat">
+      <div class="chat-head">
+        <h2>Conversation</h2>
+        @if (messages.length) {
+          <button class="link" type="button" (click)="clearConversation()">Nouvelle conversation</button>
+        }
+      </div>
 
-</section>
+      <label for="document">Chercher dans :</label>
+      <select id="document" [(ngModel)]="selectedSource">
+        <option value="">Tous les documents</option>
+        @for (doc of documents; track doc.id) {
+          <option [value]="doc.id">{{ doc.name }}</option>
+        }
+      </select>
 
-    <section class="question-section">
+      <div class="messages" aria-live="polite">
+        @if (messages.length === 0) {
+          <p class="muted">Exemple : « Quelle est la durée maximale de la suspension de travail ? »</p>
+        }
 
-      <h2>Ask a question</h2>
-      <label for="document">Document :</label>
+        @for (m of messages; track $index) {
+          <div class="bubble" [class.user]="m.role === 'user'" [class.assistant]="m.role === 'assistant'">
+            @if (m.role === 'assistant' && m.rewritten) {
+              <div class="rewritten">Question comprise : « {{ m.rewritten }} »</div>
+            }
 
-<select
-  id="document"
-  [(ngModel)]="selectedSource">
+            @if (m.content) {
+              <div class="text">{{ m.content }}</div>
+            } @else if (m.streaming && !m.error) {
+              <div class="muted">Recherche dans les documents…</div>
+            }
 
-  <option value="">
-    Tous les documents
-  </option>
+            @if (m.stopped) {
+              <div class="muted">Génération interrompue.</div>
+            }
+            @if (m.error) {
+              <p class="message error" role="alert">{{ m.error }}</p>
+            }
 
-  @for (document of documents; track document) {
-    <option [value]="document">
-      {{ document.split('/').pop() }}
-    </option>
-  }
-
-</select>
+            @if (m.sources?.length) {
+              <div class="sources">
+                <strong>Sources</strong>
+                @for (s of m.sources; track s.source + '#' + s.page) {
+                  <details class="source">
+                    <summary>{{ s.name }} — page {{ s.page }}</summary>
+                    <blockquote>{{ s.snippet }}</blockquote>
+                    <a [href]="api.pageUrl(s.source, s.page)" target="_blank" rel="noopener">Ouvrir la page dans le PDF ↗</a>
+                  </details>
+                }
+              </div>
+            }
+          </div>
+        }
+        <div #anchor></div>
+      </div>
 
       <textarea
         [(ngModel)]="question"
-        placeholder="Exemple : Quel est le sujet principal de ce document ?"
-        rows="4">
-      </textarea>
+        (keydown.enter)="onEnter($event)"
+        placeholder="Votre question… "
+        rows="3"
+        [disabled]="asking"
+        aria-label="Votre question"
+      ></textarea>
 
-      <button
-        (click)="askQuestion()"
-        [disabled]="loading || !question.trim()">
-
-        {{ loading ? 'Recherche...' : 'Ask' }}
-
-      </button>
-
+      <div class="actions">
+        <button type="button" (click)="ask()" [disabled]="asking || !question.trim()">
+          {{ asking ? 'Réponse en cours…' : 'Envoyer' }}
+        </button>
+        @if (asking) {
+          <button type="button" class="secondary" (click)="stop()">Arrêter</button>
+        }
+      </div>
     </section>
-
-    @if (answer) {
-
-      <section class="answer-section">
-
-        <h2>Answer</h2>
-
-        <div class="answer">
-          {{ answer }}
-        </div>
-
-      </section>
-
-      <section class="sources-section">
-
-  <h2>Sources</h2>
-
-  @for (source of sources; track source.source + source.page) {
-
-    <div class="source">
-      <strong>Page {{ source.page }}</strong>
-      <span> — {{ source.source.split('/').pop() }}</span>
-    </div>
-
-  }
-
-</section>
-
-    }
-
   </main>
-
 </div>
