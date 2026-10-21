@@ -20,3 +20,7 @@ knowledge-agent-frontend/.angular/
 knowledge-agent-frontend/dist/
 
 data/index.backup.json
+
+data/*.json.bak
+data/*.json.new
+.env
