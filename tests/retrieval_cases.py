@@ -43,3 +43,12 @@ TEST_CASES = [
         "expected_page": 11
     },
 ]
+
+# Questions SANS réponse dans les documents : servent à calibrer le seuil d'abstention
+# (MIN_SEMANTIC_SCORE). Ajoute-en de ton domaine : questions voisines mais absentes du corpus.
+UNANSWERABLE_CASES = [
+    {"question": "Quelle est la couleur du logo de Maroclear ?"},
+    {"question": "Quelle est la capitale de l'Australie ?"},
+    {"question": "Comment préparer une pizza margherita ?"},
+    {"question": "Qui a gagné la coupe du monde de football en 2018 ?"},
+]
