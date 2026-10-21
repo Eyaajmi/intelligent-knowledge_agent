@@ -85,6 +85,20 @@ distribution des scores des questions avec et sans réponse pour choisir `MIN_SE
 `MIN_KEYWORD_SCORE`. **Ajoute tes propres questions**, en particulier des questions voisines de ton
 corpus mais sans réponse.
 
+## Résultats d'évaluation
+
+Jeu de 10 questions (`tests/retrieval_cases.py`), top-5, index du règlement intérieur.
+
+| mode | avant réindexation (300 car.) | après (800 car.) |
+|---|---|---|
+| hybrid | 100 % / MRR 0,933 | 100 % / MRR 0,933 |
+| semantic | 90 % / 0,758 | 100 % / 0,883 |
+| keyword | 90 % / 0,825 | 90 % / 0,900 |
+
+Garde-fou calibré avec `python -m scripts.evaluate` : MIN_SEMANTIC_SCORE=0.63, MIN_KEYWORD_SCORE=0.14
+(0/10 questions valides refusées, 3/4 questions hors sujet refusées). Échantillon réduit (14 questions) :
+à recalibrer dès que le jeu d'évaluation grandit.
+
 ## Limites connues
 
 - **Seuils non calibrés** : les valeurs par défaut sont prudentes. Le garde-fou n'attrape que les questions
